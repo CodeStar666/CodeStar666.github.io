@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=no">
+    <title>10x10 · 2048 (稳定版)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(145deg, #3a3f44, #2d3135);
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+        .game-container {
+            max-width: 700px;
+            width: 100%;
+            background: #4a4e54;
+            border-radius: 24px;
+            padding: 24px 20px 30px;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+            color: #fcf8e8;
+        }
+        .title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-shadow: 3px 3px 0 #1e1f22;
+            margin: 0;
+            line-height: 1;
+        }
+        .score-box {
+            background: #2e3136;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: inset 0 2px 5px #1a1c1f;
+        }
+        .score-label {
+            color: #cacfd6;
+            font-size: 1.1rem;
+        }
+        .score-value {
+            background: #f1c40f;
+            color: #1e1f22;
+            font-size: 1.6rem;
+            font-weight: 800;
+            padding: 2px 14px;
+            border-radius: 30px;
+            box-shadow: inset 0 -2px 0 #b68b00;
+        }
+        .new-game-btn {
+            background: #e67e22;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 10px 22px;
+            border-radius: 40px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #b45f1a, 0 6px 12px black;
+            transition: 0.06s;
+            border: 1px solid #f39c12;
+        }
+        .new-game-btn:active {
+            box-shadow: 0 2px 0 #b45f1a;
+            transform: translateY(4px);
+        }
+        .grid-wrapper {
+            background: #2b2f33;
+            border-radius: 20px;
+            padding: 16px;
+            margin: 20px 0 16px;
+            box-shadow: inset 0 0 12px #1b1d20;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 8px;
+            aspect-ratio: 1 / 1;
+        }
+        .cell {
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            border-radius: 12px;
+            background: #3d4147;
+            color: #1c1e22;
+            box-shadow: inset 0 -2px 0 #2a2c30, inset 0 0 0 1px #5a5e64;
+            padding: 2px;
+            /* 字体大小随单元格自适应，保证4位数不溢出 */
+            font-size: clamp(0.75rem, 3.8vw, 1.3rem);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: clip;
+        }
+        /* 数字本身不折行，完全显示 */
+        .cell span {
+            display: block;
+            line-height: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: clip;
+            transform: scale(1);
+            max-width: 100%;
+        }
+        .control-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 18px;
+            gap: 12px;
+        }
+        .direction-panel {
+            display: flex;
+            gap: 12px;
+            background: #363a3f;
+            padding: 12px 16px;
+            border-radius: 60px;
+            box-shadow: inset 0 3px 8px #1f2124;
+        }
+        .dir-btn {
+            background: #555b62;
+            border: none;
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+            width: 64px;
+            height: 64px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #34383c, 0 5px 12px black;
+            transition: 0.05s;
+            border: 1px solid #7a7f87;
+        }
+        .dir-btn:active {
+            box-shadow: 0 2px 0 #34383c;
+            transform: translateY(4px);
+        }
+        .message-area {
+            margin-top: 20px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #ffe082;
+            text-align: center;
+            min-height: 2.5rem;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 0 #2d2f33;
+        }
+        @media (max-width: 500px) {
+            .grid { gap: 5px; }
+            .dir-btn { width: 55px; height: 55px; font-size: 1.8rem; }
+            .title { font-size: 1.8rem; }
+            .cell { font-size: clamp(0.65rem, 4vw, 1.1rem); }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="header">
+        <div class="title">10x10<br>2048</div>
+        <div class="score-box">
+            <span class="score-label">🍁 分数</span>
+            <span id="scoreDisplay" class="score-value">0</span>
+        </div>
+        <button id="newGameBtn" class="new-game-btn">⟳ 新局</button>
+    </div>
+
+    <div class="grid-wrapper">
+        <div id="grid" class="grid"></div>
+    </div>
+
+    <div class="control-buttons">
+        <div class="direction-panel">
+            <button id="moveUp" class="dir-btn">⬆</button>
+            <button id="moveDown" class="dir-btn">⬇</button>
+            <button id="moveLeft" class="dir-btn">⬅</button>
+            <button id="moveRight" class="dir-btn">➡</button>
+        </div>
+    </div>
+    <div id="message" class="message-area"></div>
+</div>
+
+<script>
+    (function(){
+        "use strict";
+
+        const SIZE = 10;          // 10x10 棋盘
+        let board = [];
+        let score = 0;
+
+        const gridEl = document.getElementById('grid');
+        const scoreEl = document.getElementById('scoreDisplay');
+        const messageEl = document.getElementById('message');
+
+        // ----- 工具函数 -----
+        function createEmptyBoard() {
+            return Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+        }
+
+        function getEmptyCells(board) {
+            const empty = [];
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE; j++) {
+                    if (board[i][j] === 0) empty.push([i, j]);
+                }
+            }
+            return empty;
+        }
+
+        function addRandomNumber(board) {
+            const empty = getEmptyCells(board);
+            if (empty.length === 0) return false;
+            const [row, col] = empty[Math.floor(Math.random() * empty.length)];
+            board[row][col] = Math.random() < 0.9 ? 2 : 4;
+            return true;
+        }
+
+        // ----- 单行合并（返回新行和新增分数）-----
+        function mergeRow(row) {
+            let arr = row.filter(v => v !== 0);
+            let scoreAdd = 0;
+            for (let i = 0; i < arr.length - 1; i++) {
+                if (arr[i] !== 0 && arr[i] === arr[i + 1]) {
+                    arr[i] *= 2;
+                    scoreAdd += arr[i];
+                    arr[i + 1] = 0;
+                    i++;
+                }
+            }
+            arr = arr.filter(v => v !== 0);
+            while (arr.length < SIZE) arr.push(0);
+            return { newRow: arr, scoreAdd };
+        }
+
+        // ----- 左移（直接修改board）-----
+        function moveLeftOnBoard(board) {
+            let changed = false;
+            let totalScoreAdd = 0;
+            for (let i = 0; i < SIZE; i++) {
+                const oldRow = board[i].slice();
+                const { newRow, scoreAdd } = mergeRow(oldRow);
+                if (JSON.stringify(oldRow) !== JSON.stringify(newRow)) {
+                    board[i] = newRow;
+                    changed = true;
+                    totalScoreAdd += scoreAdd;
+                }
+            }
+            return { changed, scoreAdd: totalScoreAdd };
+        }
+
+        // ----- 右移（反转->左移->反转）-----
+        function moveRightOnBoard(board) {
+            let changed = false;
+            let totalScoreAdd = 0;
+            for (let i = 0; i < SIZE; i++) {
+                const oldRow = board[i].slice();
+                const reversed = oldRow.slice().reverse();
+                const { newRow: mergedReversed, scoreAdd } = mergeRow(reversed);
+                const newRow = mergedReversed.slice().reverse();
+                if (JSON.stringify(oldRow) !== JSON.stringify(newRow)) {
+                    board[i] = newRow;
+                    changed = true;
+                    totalScoreAdd += scoreAdd;
+                }
+            }
+            return { changed, scoreAdd: totalScoreAdd };
+        }
+
+        // ----- 矩阵转置 -----
+        function transpose(matrix) {
+            const newMatrix = createEmptyBoard();
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE; j++) {
+                    newMatrix[j][i] = matrix[i][j];
+                }
+            }
+            return newMatrix;
+        }
+
+        // ========== 修复核心：上移 / 下移 ==========
+        // 保证正确修改原棋盘，且不丢失引用
+        function moveUp(board) {
+            let trans = transpose(board);
+            const { changed, scoreAdd } = moveLeftOnBoard(trans);
+            if (changed) {
+                // 将移动后的 trans 转置回来，复制到原 board
+                const result = transpose(trans);
+                for (let i = 0; i < SIZE; i++) {
+                    for (let j = 0; j < SIZE; j++) {
+          
